@@ -130,6 +130,7 @@ details.opts[open] summary::after{transform:rotate(45deg)}
 .segctl button{height:36px;border-radius:9px;font-size:14px;font-weight:600;color:var(--muted)}
 .segctl button.on{background:var(--surface);color:var(--text);box-shadow:0 1px 2px rgba(0,0,0,.08)}
 .kpis{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:8px;margin-bottom:12px}
+.kpis.two{grid-template-columns:1fr 1fr}
 .kpi{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px}
 .kpi .v{font-size:22px;font-weight:700;letter-spacing:-.02em}
 .kpi .l{font-size:12px;color:var(--muted);margin-top:2px}
@@ -568,10 +569,9 @@ function viewStats() {
   const head = `<header class="page-h"><div><h1>Stats</h1><p class="sub">Free throws · ${SHOTS} per ronde</p></div></header>`;
   if (!series.length) return head + seg + `<section class="card"><p class="empty">Geen trainingen in deze periode.</p></section>` + recordsCard();
 
-  const kpis = `<div class="kpis">
+  const kpis = `<div class="kpis two">
     <div class="kpi"><div class="v">${pct(team.made, team.att)}</div><div class="l">Team · ${team.made}/${team.att}</div></div>
     <div class="kpi"><div class="v">${series.length}</div><div class="l">Trainingen</div></div>
-    <div class="kpi"><div class="v">${dec(team.n / series.length, 1)}</div><div class="l">Gem. aanw.</div></div>
   </div>`;
 
   const rank = `<section class="card"><h2>Ranglijst</h2>${rows.map((r, i) => `
