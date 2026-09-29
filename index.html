@@ -1,0 +1,815 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Free Throws</title>
+<meta name="description" content="Free throw percentages bijhouden tijdens de training.">
+<meta name="theme-color" content="#F5F4F0" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#111113" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Free Throws">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<style>
+:root{
+  --bg:#F5F4F0; --surface:#FFFFFF; --surface-2:#EFEDE8; --text:#1A1A1E; --muted:#6E6D75;
+  --border:#E3E1DB; --accent:#C9531A; --accent-ink:#FFFFFF; --accent-soft:#FBE7DB;
+  --danger:#C2362B; --radius:16px; --tabbar:64px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#111113; --surface:#1B1B1E; --surface-2:#26262A; --text:#EDEDF0; --muted:#9B9AA3;
+    --border:#2D2D32; --accent:#F07A38; --accent-ink:#1A0E06; --accent-soft:#3A2418; --danger:#E5675C;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#111113; --surface:#1B1B1E; --surface-2:#26262A; --text:#EDEDF0; --muted:#9B9AA3;
+  --border:#2D2D32; --accent:#F07A38; --accent-ink:#1A0E06; --accent-soft:#3A2418; --danger:#E5675C;
+  color-scheme: dark;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0; background:var(--bg); color:var(--text);
+  font:16px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  font-variant-numeric:tabular-nums; -webkit-tap-highlight-color:transparent;
+  padding:env(safe-area-inset-top) 0 calc(var(--tabbar) + env(safe-area-inset-bottom) + 24px);
+  overflow-x:hidden;
+}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer;background:none;border:0;padding:0}
+main{max-width:560px;margin:0 auto;padding:0 16px}
+
+/* header */
+.page-h{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;padding:20px 2px 14px}
+.page-h h1{margin:0;font-size:28px;line-height:1.1;letter-spacing:-.02em;font-weight:700}
+.page-h h1::first-letter{text-transform:uppercase}
+.sub{margin:4px 0 0;color:var(--muted);font-size:14px}
+.link{color:var(--accent);font-weight:600;font-size:15px;padding:6px 0}
+
+/* cards */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:12px}
+.card h2{margin:0 0 10px;font-size:13px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.card-h{display:flex;width:100%;align-items:center;justify-content:space-between;font-weight:600}
+.card-h .muted{font-weight:400}
+.chev{width:10px;height:10px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg);margin:0 4px 4px}
+.chev.up{transform:rotate(-135deg);margin-bottom:-4px}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+.empty{color:var(--muted);text-align:center;padding:18px 8px;margin:0}
+
+/* buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:44px;padding:0 16px;border-radius:12px;background:var(--surface-2);font-weight:600;font-size:15px}
+.btn.primary{background:var(--accent);color:var(--accent-ink)}
+.btn.block{width:100%}
+.btn.danger{color:var(--danger)}
+.btn:active{transform:scale(.98)}
+
+/* attendance chips */
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.chip{height:38px;padding:0 14px;border-radius:999px;border:1px solid var(--border);background:var(--surface);font-size:15px}
+.chip.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+.chip-actions{display:flex;gap:16px;margin-top:10px}
+.names-line{margin:8px 0 0;color:var(--muted);font-size:14px}
+
+/* rounds */
+.rtabs{display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;scrollbar-width:none}
+.rtab{height:36px;padding:0 14px;border-radius:10px;background:var(--surface-2);font-weight:600;font-size:14px;white-space:nowrap;flex:none}
+.rtab.on{background:var(--text);color:var(--bg)}
+.rtab.add{background:none;color:var(--accent);padding:0 8px}
+.srow{padding:8px 0}
+.srow+.srow{border-top:1px solid var(--border)}
+.srow .top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
+.srow .nm{font-weight:600;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.srow .val{font-size:13px;color:var(--muted)}
+.srow.done .val{color:var(--text);font-weight:600}
+.srow.inline{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:8px}
+.seg{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}
+.seg button{height:44px;border-radius:11px;background:var(--surface-2);font-weight:600;font-size:17px}
+.seg button.on{background:var(--accent);color:var(--accent-ink)}
+.stepper{display:flex;align-items:center;justify-content:flex-end;gap:10px}
+.stepper button{width:40px;height:40px;border-radius:10px;background:var(--surface-2);font-size:20px;font-weight:600}
+.stepper b{min-width:56px;text-align:center}
+.rfoot{display:flex;justify-content:space-between;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);font-size:14px;color:var(--muted)}
+.rfoot b{color:var(--text)}
+.note{font-size:13px;color:var(--muted);background:var(--surface-2);border-radius:10px;padding:8px 10px;margin:0 0 10px}
+
+/* totals */
+.big{display:flex;align-items:baseline;gap:10px;margin-bottom:8px}
+.big .v{font-size:34px;font-weight:700;letter-spacing:-.02em}
+.tl{display:grid;grid-template-columns:1fr auto auto;gap:4px 14px;font-size:15px}
+.tl .r{text-align:right}
+.tl .dim{color:var(--muted)}
+
+/* suicide */
+.sui{margin:4px 2px 12px}
+.sui-times{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+.tchip{display:inline-flex;align-items:center;gap:2px;height:36px;padding:0 0 0 12px;border-radius:999px;background:var(--surface-2);font-size:14px}
+.tchip button{width:34px;height:36px;border-radius:50%;color:var(--muted);font-size:18px;line-height:1}
+.sui form{display:flex;gap:8px;margin-top:6px}
+.input{height:44px;border:1px solid var(--border);background:var(--surface);border-radius:12px;padding:0 12px;min-width:0;flex:1}
+.input:focus{outline:2px solid var(--accent);outline-offset:-1px}
+
+details.opts{margin:18px 2px 0}
+details.opts summary{color:var(--muted);font-size:14px;cursor:pointer;list-style:none;padding:6px 0;display:flex;align-items:center;gap:8px}
+details.opts summary::-webkit-details-marker{display:none}
+details.opts summary::after{content:"";width:7px;height:7px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(-45deg);transition:transform .15s}
+details.opts[open] summary::after{transform:rotate(45deg)}
+.opts-body{display:flex;flex-direction:column;gap:10px;margin-top:8px}
+.field{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:15px}
+.field .input{flex:0 1 170px}
+
+/* stats */
+.segctl{display:grid;grid-template-columns:repeat(3,1fr);background:var(--surface-2);border-radius:12px;padding:3px;margin-bottom:12px}
+.segctl button{height:36px;border-radius:9px;font-size:14px;font-weight:600;color:var(--muted)}
+.segctl button.on{background:var(--surface);color:var(--text);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.kpis{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:8px;margin-bottom:12px}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px}
+.kpi .v{font-size:22px;font-weight:700;letter-spacing:-.02em}
+.kpi .l{font-size:12px;color:var(--muted);margin-top:2px}
+.ref{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.ref .kpi{padding:10px 12px}
+.ref .v{font-size:20px}
+.ref .l{line-height:1.25}
+.rank{display:grid;grid-template-columns:22px 1fr auto 62px;align-items:center;gap:4px 10px;width:100%;text-align:left;padding:9px 0}
+.rank+.rank{border-top:1px solid var(--border)}
+.rank .pos{color:var(--muted);font-size:13px}
+.rank .nm{font-weight:600}
+.rank .fr{color:var(--muted);font-size:13px;text-align:right}
+.rank .pc{font-weight:700;text-align:right}
+.bar{grid-column:2/5;height:4px;border-radius:2px;background:var(--surface-2);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--accent);border-radius:2px}
+.chart{display:flex;align-items:flex-end;gap:6px;height:140px;padding-top:18px}
+.col{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;height:100%;justify-content:flex-end}
+.col .val{font-size:11px;color:var(--muted);margin-bottom:3px}
+.col .b{width:100%;max-width:28px;background:var(--accent);border-radius:6px 6px 2px 2px}
+.col .lb{font-size:11px;color:var(--muted);margin-top:5px;white-space:nowrap}
+.rec{display:flex;justify-content:space-between;align-items:baseline;padding:8px 0}
+.rec+.rec{border-top:1px solid var(--border)}
+.rec .d{font-size:13px;color:var(--muted)}
+
+/* list rows (beheer) */
+.lrow{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;text-align:left;padding:11px 0}
+.lrow+.lrow{border-top:1px solid var(--border)}
+.lrow .t{font-weight:600}
+.lrow .s{font-size:13px;color:var(--muted)}
+.lrow.off .t{color:var(--muted);font-weight:400}
+.lrow.off .t::after{content:" · inactief";font-size:13px}
+.arrow{width:8px;height:8px;border-right:2px solid var(--muted);border-top:2px solid var(--muted);transform:rotate(45deg);flex:none}
+.switch{width:44px;height:26px;border-radius:13px;background:var(--surface-2);position:relative;flex:none;border:1px solid var(--border)}
+.switch::after{content:"";position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:var(--surface);box-shadow:0 1px 2px rgba(0,0,0,.25);transition:left .15s}
+.switch.on{background:var(--accent);border-color:var(--accent)}
+.switch.on::after{left:20px}
+.pactions{display:flex;align-items:center;gap:12px}
+.iconbtn{color:var(--muted);font-size:14px;padding:6px 2px}
+.row-form{display:flex;gap:8px;margin-top:10px}
+
+/* tab bar */
+.tabbar{position:fixed;left:0;right:0;bottom:0;z-index:5;background:color-mix(in srgb,var(--surface) 92%,transparent);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-top:1px solid var(--border);padding-bottom:env(safe-area-inset-bottom)}
+.tabbar nav{max-width:560px;margin:0 auto;display:grid;grid-template-columns:repeat(3,1fr);height:var(--tabbar)}
+.tabbar button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:11px;font-weight:600;color:var(--muted)}
+.tabbar button.on{color:var(--accent)}
+.tabbar svg{width:24px;height:24px}
+
+/* dialog */
+dialog{border:0;padding:0;margin:auto auto 0;width:100%;max-width:560px;max-height:85vh;border-radius:20px 20px 0 0;background:var(--surface);color:var(--text)}
+dialog::backdrop{background:rgba(0,0,0,.4)}
+.dlg{padding:18px 16px calc(20px + env(safe-area-inset-bottom))}
+.dlg-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.dlg-h h2{margin:0;font-size:22px}
+.close{width:36px;height:36px;border-radius:50%;background:var(--surface-2);font-size:18px}
+.hist{display:grid;grid-template-columns:auto 1fr auto 56px;gap:8px 10px;align-items:center;font-size:14px}
+.hist .bar{grid-column:auto}
+.hist .r{text-align:right}
+
+.toast{position:fixed;left:50%;bottom:calc(var(--tabbar) + env(safe-area-inset-bottom) + 14px);transform:translate(-50%,20px);background:var(--text);color:var(--bg);padding:10px 16px;border-radius:12px;font-size:14px;opacity:0;pointer-events:none;transition:.2s;z-index:10;max-width:calc(100% - 32px)}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+</style>
+</head>
+<body>
+<main id="app"></main>
+
+<div class="tabbar">
+  <nav>
+    <button data-a="tab" data-tab="training">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3v18M5.6 5.6c3 2.8 3 10 0 12.8M18.4 5.6c-3 2.8-3 10 0 12.8"/></svg>
+      Training
+    </button>
+    <button data-a="tab" data-tab="stats">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 20V11M12 20V5M19 20v-6"/></svg>
+      Stats
+    </button>
+    <button data-a="tab" data-tab="beheer">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h10"/></svg>
+      Beheer
+    </button>
+  </nav>
+</div>
+
+<dialog id="dlg"></dialog>
+<div class="toast" id="toast"></div>
+<input type="file" id="importFile" accept="application/json,.json" hidden>
+
+<script>
+'use strict';
+const KEY = 'ft-tracker-v1';
+const SHOTS = 6;            // pogingen per ronde
+const MIN_REC = 4;          // min. spelers voor een teamrecord
+
+/* ---------- helpers ---------- */
+const DAYS = ['zo','ma','di','wo','do','vr','za'];
+const DAYS_L = ['zondag','maandag','dinsdag','woensdag','donderdag','vrijdag','zaterdag'];
+const MON = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
+const MON_L = ['januari','februari','maart','april','mei','juni','juli','augustus','september','oktober','november','december'];
+const pad = n => String(n).padStart(2, '0');
+const iso = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const todayISO = () => iso(new Date());
+const pd = s => new Date(s + 'T12:00:00');
+const dShort = s => { const d = pd(s); return `${DAYS[d.getDay()]} ${d.getDate()} ${MON[d.getMonth()]}`; };
+const dLong = s => { const d = pd(s); return `${DAYS_L[d.getDay()]} ${d.getDate()} ${MON_L[d.getMonth()]}`; };
+const pct = (m, a) => a ? (m / a * 100).toFixed(1).replace('.', ',') + '%' : '–';
+const pctN = (m, a) => a ? m / a * 100 : 0;
+const dec = (x, n = 2) => x.toFixed(n).replace('.', ',');
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+let _c = 0;
+const uid = () => Date.now().toString(36) + (_c++).toString(36) + Math.random().toString(36).slice(2, 6);
+const byName = (a, b) => a.name.localeCompare(b.name, 'nl');
+
+/* ---------- startdata uit Excel (aug–sep 2026) ---------- */
+const SEED_DATES = ['2026-08-31','2026-09-03','2026-09-07','2026-09-10','2026-09-14','2026-09-17','2026-09-21','2026-09-24','2026-09-28'];
+const _ = null;
+const SEED_ROWS = [
+  ['Dimi',     [_, _, _, _, _, _, _, _, _]],
+  ['Franz',    [10, 9, 11, 10, _, 7, _, _, _]],
+  ['Cesar',    [9, _, 10, 8, 10, _, _, _, _]],
+  ['Stefan',   [9, 9, 12, _, 7, _, 7, 10, 8]],
+  ['Mattijs',  [_, 10, 8, 9, 8, _, 5, 10, 12]],
+  ['Lennard',  [5, 10, 9, 5, 9, 10, 9, 10, 10]],
+  ['Joey',     [9, 7, _, _, _, _, 9, _, _]],
+  ['Max',      [10, 8, _, _, _, _, 8, 8, 7]],
+  ['Aymen',    [8, 10, 9, _, 6, _, 7, _, 9]],
+  ['Nils',     [5, 7, 9, _, 10, 8, 6, _, _]],
+  ['Donny',    [3, 8, 9, _, _, 9, 8, _, 8]],
+  ['Romu',     [8, _, _, _, _, _, 8, _, 6]],
+  ['JJ',       [9, _, _, _, 7, 5, 7, 8, 8]],
+  ['Sander',   [4, 8, _, 6, 9, 6, 6, _, _]],
+  ['Gianluca', [6, _, 8, 6, _, 4, 8, _, _]],
+  ['Lievadjo', [6, _, 6, 5, _, _, _, _, _]],
+  ['Marron',   [7, _, 6, 4, 4, _, 5, _, 7]],
+  ['Rob',      [_, 4, 5, 8, _, 5, 7, 4, 5]],
+];
+function seed() {
+  const players = SEED_ROWS.map(([name]) => ({ id: uid(), name, active: true }));
+  const trainings = SEED_DATES.map((date, i) => {
+    const scores = {}, present = [];
+    SEED_ROWS.forEach(([, vals], j) => {
+      if (vals[i] != null) { scores[players[j].id] = vals[i]; present.push(players[j].id); }
+    });
+    // Excel bevat alleen het totaal per training (2 × 6 pogingen)
+    return { id: uid(), date, present, rounds: [{ att: 2 * SHOTS, combined: true, scores }], suicides: [] };
+  });
+  return { v: 1, players, trainings, legacy: { bestRound: { made: 28, att: 36, date: '2026-09-24' } }, lastBackup: null };
+}
+
+/* ---------- opslag ---------- */
+function validDb(d) {
+  return !!d && Array.isArray(d.players) && Array.isArray(d.trainings)
+    && d.players.every(p => p && p.id && typeof p.name === 'string')
+    && d.trainings.every(t => t && t.id && /^\d{4}-\d\d-\d\d$/.test(t.date) && Array.isArray(t.present) && Array.isArray(t.rounds));
+}
+function normalize(d) {
+  const ids = new Set(d.players.map(p => p.id));
+  d.players.forEach(p => { p.active = p.active !== false; });
+  d.trainings.forEach(t => {
+    t.present = [...new Set(t.present)].filter(pid => ids.has(pid));
+    t.suicides = (Array.isArray(t.suicides) ? t.suicides : []).map(Number).filter(x => x > 0);
+    t.rounds = t.rounds.filter(r => r && typeof r === 'object');
+    if (!t.rounds.length) t.rounds.push({ att: SHOTS, scores: {} });
+    t.rounds.forEach(r => {
+      r.att = Number(r.att) > 0 ? Number(r.att) : SHOTS;
+      const sc = {};
+      for (const [pid, v] of Object.entries(r.scores || {})) {
+        const n = Number(v);
+        if (ids.has(pid) && Number.isInteger(n) && n >= 0 && n <= r.att) sc[pid] = n;
+      }
+      r.scores = sc;
+    });
+  });
+  return d;
+}
+let loadWarning = '';
+function load() {
+  let raw = null;
+  try { raw = localStorage.getItem(KEY); } catch (e) {}
+  if (raw) {
+    try { const d = JSON.parse(raw); if (validDb(d)) return normalize(d); } catch (e) {}
+    // Onleesbare data nooit weggooien: bewaar een kopie en ga verder met lege startdata.
+    try { localStorage.setItem(KEY + '-onleesbaar-' + Date.now(), raw); } catch (e) {}
+    loadWarning = 'Opgeslagen data was onleesbaar. Er is een kopie bewaard; importeer zo nodig een backup.';
+  }
+  const d = seed();
+  try { localStorage.setItem(KEY, JSON.stringify(d)); } catch (e) {}
+  return d;
+}
+function save() {
+  try { localStorage.setItem(KEY, JSON.stringify(db)); }
+  catch (e) { toast('Opslaan mislukt'); }
+}
+let db = load();
+if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+
+/* ---------- berekeningen ---------- */
+const P = id => db.players.find(p => p.id === id);
+const T = id => db.trainings.find(t => t.id === id);
+
+function tTotals(t) {               // pid -> {made, att}
+  const m = {};
+  for (const r of t.rounds) for (const pid of t.present) {
+    const v = r.scores[pid];
+    if (v == null) continue;
+    const x = m[pid] || (m[pid] = { made: 0, att: 0 });
+    x.made += v; x.att += r.att;
+  }
+  return m;
+}
+function sumTotals(m) {
+  let made = 0, att = 0, n = 0;
+  for (const k in m) { made += m[k].made; att += m[k].att; n++; }
+  return { made, att, n };
+}
+function roundTotals(t, r) {
+  let made = 0, att = 0, n = 0;
+  for (const pid of t.present) { const v = r.scores[pid]; if (v != null) { made += v; att += r.att; n++; } }
+  return { made, att, n };
+}
+function periodStart(p) {
+  const d = new Date();
+  if (p === '30') { d.setDate(d.getDate() - 30); return iso(d); }
+  if (p === 'season') return `${d.getMonth() >= 7 ? d.getFullYear() : d.getFullYear() - 1}-08-01`;
+  return '0000-00-00';
+}
+const sortedTrainings = () => [...db.trainings].sort((a, b) => a.date.localeCompare(b.date));
+const periodTrainings = p => { const s = periodStart(p); return sortedTrainings().filter(t => t.date >= s); };
+
+function records() {
+  let bestR = null, bestT = null;
+  const better = (a, b) => !b || a.made / a.att > b.made / b.att || (a.made / a.att === b.made / b.att && a.att > b.att);
+  for (const t of db.trainings) {
+    const s = sumTotals(tTotals(t));
+    if (s.n >= MIN_REC) { const c = { ...s, date: t.date }; if (better(c, bestT)) bestT = c; }
+    for (const r of t.rounds) {
+      if (r.combined) continue;
+      const rt = roundTotals(t, r);
+      if (rt.n >= MIN_REC) { const c = { ...rt, date: t.date }; if (better(c, bestR)) bestR = c; }
+    }
+  }
+  const L = db.legacy && db.legacy.bestRound;
+  if (L && db.trainings.some(t => t.date === L.date) && better(L, bestR)) bestR = L;
+  return { bestR, bestT };
+}
+function suiSummary(times) {
+  if (!times.length) return null;
+  return { first: times[0], last: times[times.length - 1], avg: times.reduce((a, b) => a + b, 0) / times.length, best: Math.min(...times) };
+}
+
+const fmtT = x => String(Math.round(x * 100) / 100).replace('.', ',');   // 24,5 / 23,23
+const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+
+/* ---------- UI-state (onthouden, want iOS herlaadt apps op de achtergrond) ---------- */
+const UI_KEY = 'ft-ui';
+const ui = { tab: 'training', tId: null, round: 0, attOpen: true, suiOpen: false, period: '30', allT: false };
+try {
+  const s = JSON.parse(localStorage.getItem(UI_KEY));
+  // Alleen herstellen als de app kort geleden nog open was (bv. midden in een training)
+  if (s && Date.now() - (s.at || 0) < 3 * 3600e3) Object.assign(ui, s);
+  else if (s && s.period) ui.period = s.period;
+} catch (e) {}
+ui.suiOpen = false; ui.allT = false;
+if (ui.tId && !T(ui.tId)) ui.tId = null;
+let focusSui = false;
+const $app = document.getElementById('app');
+const dlg = document.getElementById('dlg');
+
+function render() {
+  $app.innerHTML = ui.tab === 'training' ? viewTraining() : ui.tab === 'stats' ? viewStats() : viewBeheer();
+  document.querySelectorAll('.tabbar button').forEach(b => b.classList.toggle('on', b.dataset.tab === ui.tab));
+  if (focusSui) { focusSui = false; const i = document.getElementById('suiIn'); if (i) i.focus(); }
+  try { localStorage.setItem(UI_KEY, JSON.stringify({ tab: ui.tab, tId: ui.tId, round: ui.round, attOpen: ui.attOpen, period: ui.period, at: Date.now() })); } catch (e) {}
+}
+let toastTimer;
+function toast(msg, ms = 2200) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), ms);
+}
+
+/* ---------- view: training ---------- */
+function currentTraining() {
+  let t = ui.tId && T(ui.tId);
+  if (!t) { t = db.trainings.find(x => x.date === todayISO()) || null; ui.tId = t ? t.id : null; }
+  return t;
+}
+function viewTraining() {
+  const t = currentTraining();
+  if (!t) return viewNoTraining();
+  const present = t.present.map(P).filter(Boolean).sort(byName);
+  ui.round = Math.min(ui.round, t.rounds.length - 1);
+  const r = t.rounds[ui.round];
+  const isToday = t.date === todayISO();
+
+  // aanwezigheid
+  const pool = db.players.filter(p => p.active || t.present.includes(p.id)).sort(byName);
+  const att = `
+    <section class="card">
+      <button class="card-h" data-a="attToggle">
+        <span>Aanwezig <span class="muted">· ${present.length}</span></span>
+        <span class="chev ${ui.attOpen ? 'up' : ''}"></span>
+      </button>
+      ${ui.attOpen ? `
+        <div class="chips">${pool.map(p => `<button class="chip ${t.present.includes(p.id) ? 'on' : ''}" data-a="att" data-p="${p.id}">${esc(p.name)}</button>`).join('')}</div>
+        <div class="chip-actions"><button class="link" data-a="attAll">Iedereen</button><button class="link" data-a="attNone">Niemand</button>${present.length ? `<button class="link" data-a="attToggle" style="margin-left:auto">Klaar</button>` : ''}</div>`
+      : `<p class="names-line">${present.length ? present.map(p => esc(p.name)).join(', ') : 'Nog niemand aangevinkt'}</p>`}
+    </section>`;
+
+  // rondes
+  let rounds = '';
+  if (present.length) {
+    const tabs = t.rounds.map((x, i) => `<button class="rtab ${i === ui.round ? 'on' : ''}" data-a="round" data-i="${i}">${x.combined ? 'Totaal (Excel)' : 'Ronde ' + (t.rounds.filter((y, j) => j <= i && !y.combined).length)}</button>`).join('');
+    const rows = present.map(p => {
+      const v = r.scores[p.id];
+      if (r.att > SHOTS) {
+        return `<div class="srow inline"><span class="nm">${esc(p.name)}</span><div class="stepper">
+          <button data-a="step" data-p="${p.id}" data-d="-1" aria-label="min">−</button><b>${v == null ? '–' : v} / ${r.att}</b>
+          <button data-a="step" data-p="${p.id}" data-d="1" aria-label="plus">+</button></div></div>`;
+      }
+      let b = '';
+      for (let n = 0; n <= r.att; n++) b += `<button class="${v === n ? 'on' : ''}" data-a="score" data-p="${p.id}" data-v="${n}">${n}</button>`;
+      return `<div class="srow ${v != null ? 'done' : ''}"><div class="top"><span class="nm">${esc(p.name)}</span><span class="val">${v != null ? `${v} / ${r.att}` : 'nog invullen'}</span></div><div class="seg">${b}</div></div>`;
+    }).join('');
+    const rt = roundTotals(t, r);
+    rounds = `
+      <section class="card">
+        <div class="rtabs">${tabs}<button class="rtab add" data-a="addRound">+ Ronde</button></div>
+        ${r.combined ? `<p class="note">Uit Excel overgenomen: totaal van de training (${r.att} pogingen).</p>` : ''}
+        ${rows}
+        <div class="rfoot"><span>${rt.n}/${present.length} ingevuld</span><span><b>${rt.made}/${rt.att}</b> · ${pct(rt.made, rt.att)}</span></div>
+      </section>`;
+  }
+
+  // totaal training
+  const tot = tTotals(t), s = sumTotals(tot);
+  let totals = '';
+  if (s.att && t.rounds.length > 1) {
+    const scored = present.filter(p => tot[p.id]);
+    const multi = t.rounds.length > 1;
+    totals = `
+      <section class="card">
+        <h2>Totaal training</h2>
+        <div class="big"><span class="v">${pct(s.made, s.att)}</span><span class="muted">${s.made} / ${s.att}</span></div>
+        <div class="tl">${scored.map(p => {
+          const x = tot[p.id];
+          const parts = multi ? t.rounds.map(r2 => r2.scores[p.id] ?? '–').join(' + ') : '';
+          return `<span>${esc(p.name)}${multi ? ` <span class="dim small">${parts}</span>` : ''}</span><span class="r dim">${x.made}/${x.att}</span><span class="r">${pct(x.made, x.att)}</span>`;
+        }).join('')}</div>
+      </section>`;
+  }
+
+  // suicides
+  const ss = suiSummary(t.suicides);
+  const sui = `
+    <div class="sui">
+      ${ss ? `<div class="small muted">Suicides${t.suicides.length > 1 ? ` · eerste ${fmtT(ss.first)} s · laatste ${fmtT(ss.last)} s · gem. ${fmtT(ss.avg)} s` : ''}</div>
+        <div class="sui-times">${t.suicides.map((x, i) => `<span class="tchip">${fmtT(x)} s<button data-a="suiDel" data-i="${i}" aria-label="verwijder">×</button></span>`).join('')}</div>` : ''}
+      ${ui.suiOpen
+        ? `<form data-form="sui"><input class="input" id="suiIn" inputmode="decimal" autocomplete="off" placeholder="Tijd in sec, bijv. 24,5"><button class="btn primary">Toevoegen</button><button type="button" class="btn" data-a="suiClose">×</button></form>`
+        : `<button class="link" data-a="suiOpen">+ Suicide-tijd</button>`}
+    </div>`;
+
+  const opts = `
+    <details class="opts"><summary>Opties voor deze training</summary>
+      <div class="opts-body">
+        <label class="field">Datum <input class="input" type="date" id="tDate" value="${t.date}"></label>
+        ${t.rounds.length > 1 ? `<button class="btn danger" data-a="delRound">Deze ronde verwijderen</button>` : ''}
+        <button class="btn danger" data-a="delTraining">Training verwijderen</button>
+      </div>
+    </details>`;
+
+  return `
+    <header class="page-h">
+      <div><h1>${dLong(t.date)}</h1><p class="sub">${isToday ? 'Training van vandaag' : 'Eerdere training'}</p></div>
+      ${isToday ? '' : `<button class="link" data-a="goToday">Naar vandaag</button>`}
+    </header>
+    ${refStrip(t)}${att}${rounds}${totals}${sui}${opts}`;
+}
+// Referentie bovenaan de training: om te bepalen of er gerend moet worden
+function refStrip(t) {
+  const before = sortedTrainings().filter(x => x.id !== t.id && x.date < t.date && sumTotals(tTotals(x)).att);
+  const prev = before[before.length - 1];
+  let prevBest = null, prevLabel = 'Vorige training';
+  if (prev) {
+    // Alleen volwaardige rondes (min. 4 spelers, of iedereen als er minder waren)
+    const minN = Math.min(MIN_REC, prev.present.length);
+    const rs = prev.rounds.filter(r => !r.combined).map(r => roundTotals(prev, r)).filter(r => r.att && r.n >= minN);
+    // Anders (bv. geïmporteerd uit Excel) het totaal van de training
+    prevBest = rs.length ? rs.reduce((a, b) => (b.made / b.att > a.made / a.att ? b : a)) : sumTotals(tTotals(prev));
+    prevLabel = `Vorige · ${dShort(prev.date).slice(3)}`;
+  }
+  const avg = before.reduce((a, x) => {
+    const s = sumTotals(tTotals(x)); return { made: a.made + s.made, att: a.att + s.att };
+  }, { made: 0, att: 0 });
+  const rec = records().bestR;
+  const tile = (v, l) => `<div class="kpi"><div class="v">${v}</div><div class="l">${l}</div></div>`;
+  return `<div class="ref">
+    ${tile(prevBest ? pct(prevBest.made, prevBest.att) : '–', prevLabel)}
+    ${tile(pct(avg.made, avg.att), 'Team gem.')}
+    ${tile(rec ? pct(rec.made, rec.att) : '–', 'Record ronde')}
+  </div>`;
+}
+function viewNoTraining() {
+  const last = sortedTrainings().filter(t => t.present.length).pop();
+  return `
+    <header class="page-h"><div><h1>${dLong(todayISO())}</h1><p class="sub">Training</p></div></header>
+    <section class="card" style="text-align:center;padding:26px 16px">
+      <p style="margin:0 0 16px" class="muted">Nog geen training vandaag.</p>
+      <button class="btn primary block" data-a="start">Start training</button>
+      <div class="row-form"><input class="input" type="date" id="newDate" value="${todayISO()}"><button class="btn" data-a="startDate">Andere datum</button></div>
+    </section>
+    ${last ? `<section class="card"><button class="lrow" data-a="openT" data-id="${last.id}"><span><span class="t">Laatste training</span><br><span class="s">${dShort(last.date)} · ${plural(last.present.length, 'speler', 'spelers')} · ${(() => { const s = sumTotals(tTotals(last)); return pct(s.made, s.att); })()}</span></span><span class="arrow"></span></button></section>` : ''}`;
+}
+
+/* ---------- view: stats ---------- */
+function aggregate(ts) {
+  const per = {}, series = [];
+  for (const t of ts) {
+    const m = tTotals(t), s = sumTotals(m);
+    if (!s.att) continue;
+    series.push({ t, ...s });
+    for (const pid in m) {
+      const x = per[pid] || (per[pid] = { made: 0, att: 0, n: 0 });
+      x.made += m[pid].made; x.att += m[pid].att; x.n++;
+    }
+  }
+  return { per, series };
+}
+function viewStats() {
+  const ts = periodTrainings(ui.period);
+  const { per, series } = aggregate(ts);
+  const team = series.reduce((a, s) => ({ made: a.made + s.made, att: a.att + s.att, n: a.n + s.n }), { made: 0, att: 0, n: 0 });
+  const rows = Object.entries(per).map(([pid, x]) => ({ p: P(pid), ...x })).filter(r => r.p)
+    .sort((a, b) => b.made / b.att - a.made / a.att || b.att - a.att);
+  const periods = [['30', '30 dagen'], ['season', 'Seizoen'], ['all', 'Alles']];
+  const seg = `<div class="segctl">${periods.map(([k, l]) => `<button class="${ui.period === k ? 'on' : ''}" data-a="period" data-k="${k}">${l}</button>`).join('')}</div>`;
+  const head = `<header class="page-h"><div><h1>Stats</h1><p class="sub">Free throws · ${SHOTS} per ronde</p></div></header>`;
+  if (!series.length) return head + seg + `<section class="card"><p class="empty">Geen trainingen in deze periode.</p></section>` + recordsCard();
+
+  const kpis = `<div class="kpis">
+    <div class="kpi"><div class="v">${pct(team.made, team.att)}</div><div class="l">Team · ${team.made}/${team.att}</div></div>
+    <div class="kpi"><div class="v">${series.length}</div><div class="l">Trainingen</div></div>
+    <div class="kpi"><div class="v">${dec(team.n / series.length, 1)}</div><div class="l">Gem. aanw.</div></div>
+  </div>`;
+
+  const rank = `<section class="card"><h2>Ranglijst</h2>${rows.map((r, i) => `
+    <button class="rank" data-a="player" data-p="${r.p.id}">
+      <span class="pos">${i + 1}</span><span class="nm">${esc(r.p.name)}</span>
+      <span class="fr">${r.made}/${r.att} · ${r.n}×</span><span class="pc">${pct(r.made, r.att)}</span>
+      <span class="bar"><i style="width:${pctN(r.made, r.att).toFixed(1)}%"></i></span>
+    </button>`).join('')}</section>`;
+
+  const last = series.slice(-12);
+  const chart = `<section class="card"><h2>Team per training</h2><div class="chart">${last.map(s => {
+    const v = pctN(s.made, s.att);
+    const d = pd(s.t.date);
+    return `<div class="col" title="${dShort(s.t.date)}: ${s.made}/${s.att}"><span class="val">${Math.round(v)}</span><span class="b" style="height:${v.toFixed(1)}%"></span><span class="lb">${d.getDate()}/${d.getMonth() + 1}</span></div>`;
+  }).join('')}</div></section>`;
+
+  const times = ts.flatMap(t => t.suicides);
+  let sui = '';
+  if (times.length) {
+    const lastT = [...ts].reverse().find(t => t.suicides.length);
+    const ls = suiSummary(lastT.suicides);
+    sui = `<section class="card"><h2>Suicides</h2>
+      <div class="rec"><span>Snelste tijd</span><b>${fmtT(Math.min(...times))} s</b></div>
+      <div class="rec"><span>Gemiddeld</span><b>${fmtT(times.reduce((a, b) => a + b, 0) / times.length)} s</b></div>
+      <div class="rec"><span>Laatste keer <span class="d">· ${dShort(lastT.date)}</span></span><span>${lastT.suicides.length > 1 ? `${fmtT(ls.first)} → ${fmtT(ls.last)} s` : `${fmtT(ls.first)} s`}</span></div>
+    </section>`;
+  }
+  return head + seg + kpis + rank + chart + recordsCard() + sui;
+}
+function recordsCard() {
+  const { bestR, bestT } = records();
+  if (!bestR && !bestT) return '';
+  const line = (label, x) => x ? `<div class="rec"><span>${label}<br><span class="d">${dShort(x.date)} · ${x.made}/${x.att}</span></span><b>${pct(x.made, x.att)}</b></div>` : '';
+  return `<section class="card"><h2>Teamrecords <span style="text-transform:none;letter-spacing:0;font-weight:400">· altijd</span></h2>${line('Beste ronde', bestR)}${line('Beste training', bestT)}<p class="small muted" style="margin:6px 0 0">Vanaf ${MIN_REC} spelers.</p></section>`;
+}
+function openPlayer(pid) {
+  const p = P(pid); if (!p) return;
+  const ts = periodTrainings(ui.period).filter(t => tTotals(t)[pid]);
+  const hist = ts.map(t => ({ t, ...tTotals(t)[pid] })).reverse();
+  const sum = hist.reduce((a, h) => ({ made: a.made + h.made, att: a.att + h.att }), { made: 0, att: 0 });
+  const all = aggregate(sortedTrainings()).per[pid] || { made: 0, att: 0, n: 0 };
+  const label = { '30': 'Laatste 30 dagen', season: 'Dit seizoen', all: 'Alles' }[ui.period];
+  dlg.innerHTML = `<div class="dlg">
+    <div class="dlg-h"><h2>${esc(p.name)}</h2><button class="close" data-a="dlgClose" aria-label="sluiten">×</button></div>
+    <div class="kpis">
+      <div class="kpi"><div class="v">${pct(sum.made, sum.att)}</div><div class="l">${label}</div></div>
+      <div class="kpi"><div class="v">${pct(all.made, all.att)}</div><div class="l">Alles · ${all.made}/${all.att}</div></div>
+      <div class="kpi"><div class="v">${hist.length}</div><div class="l">Trainingen</div></div>
+    </div>
+    <div class="hist">${hist.map(h => `<span>${dShort(h.t.date)}</span><span class="bar"><i style="width:${pctN(h.made, h.att).toFixed(1)}%"></i></span><span class="r muted">${h.made}/${h.att}</span><span class="r">${pct(h.made, h.att)}</span>`).join('') || '<p class="empty">Geen data in deze periode.</p>'}</div>
+  </div>`;
+  dlg.showModal();
+}
+
+/* ---------- view: beheer ---------- */
+function viewBeheer() {
+  const all = sortedTrainings().reverse();
+  const ts = ui.allT ? all : all.slice(0, 10);
+  const trainings = `<section class="card"><h2>Trainingen</h2>
+    ${ts.map(t => { const s = sumTotals(tTotals(t)); return `<button class="lrow" data-a="openT" data-id="${t.id}"><span><span class="t">${dShort(t.date)}</span><br><span class="s">${plural(t.present.length, 'speler', 'spelers')} · ${s.made}/${s.att} · ${pct(s.made, s.att)}${t.suicides.length ? ' · suicides' : ''}</span></span><span class="arrow"></span></button>`; }).join('') || '<p class="empty">Nog geen trainingen.</p>'}
+    ${all.length > ts.length ? `<button class="link" data-a="allT">Toon alle ${all.length} trainingen</button>` : ''}
+    <div class="row-form"><input class="input" type="date" id="newDate" value="${todayISO()}"><button class="btn" data-a="startDate">+ Training</button></div>
+  </section>`;
+  const used = new Set(db.trainings.flatMap(t => t.present));
+  const players = `<section class="card"><h2>Spelers</h2>
+    ${[...db.players].sort(byName).map(p => `<div class="lrow ${p.active ? '' : 'off'}">
+      <span class="t">${esc(p.name)}</span>
+      <span class="pactions">
+        <button class="iconbtn" data-a="pRename" data-p="${p.id}">Wijzig</button>
+        ${used.has(p.id) ? '' : `<button class="iconbtn" data-a="pDel" data-p="${p.id}">Verwijder</button>`}
+        <button class="switch ${p.active ? 'on' : ''}" data-a="pActive" data-p="${p.id}" aria-label="actief"></button>
+      </span></div>`).join('')}
+    <form class="row-form" data-form="addPlayer"><input class="input" id="newPlayer" placeholder="Nieuwe speler" autocomplete="off"><button class="btn">Toevoegen</button></form>
+    <p class="small muted" style="margin:10px 0 0">Inactieve spelers staan niet in de aanwezigheidslijst, maar hun stats blijven bewaard.</p>
+  </section>`;
+  const data = `<section class="card"><h2>Backup</h2>
+    <p class="small muted" style="margin:0 0 12px">Alle data staat alleen op deze telefoon. Maak af en toe een backup.${db.lastBackup ? ` Laatste backup: ${dShort(db.lastBackup)}.` : ' Nog geen backup gemaakt.'}</p>
+    <div style="display:flex;gap:8px"><button class="btn primary" style="flex:1" data-a="export">Exporteren</button><button class="btn" style="flex:1" data-a="import">Importeren</button></div>
+  </section>`;
+  return `<header class="page-h"><div><h1>Beheer</h1><p class="sub">Trainingen, spelers en backup</p></div></header>${trainings}${players}${data}`;
+}
+
+/* ---------- acties ---------- */
+// Lege trainingen (niemand aanwezig, geen tijden) niet laten slingeren
+function pruneEmpty(keepId) {
+  const n = db.trainings.length;
+  db.trainings = db.trainings.filter(t => t.id === keepId || t.present.length || t.suicides.length);
+  if (db.trainings.length !== n) save();
+}
+// Open op de eerste ronde die nog niet af is, anders de laatste
+function pickRound(t) {
+  const i = t.rounds.findIndex(r => t.present.some(pid => r.scores[pid] == null));
+  return i >= 0 ? i : t.rounds.length - 1;
+}
+function openTraining(date) {
+  let t = db.trainings.find(x => x.date === date);
+  if (!t) {
+    t = { id: uid(), date, present: [], rounds: [{ att: SHOTS, scores: {} }], suicides: [] };
+    db.trainings.push(t);
+  }
+  pruneEmpty(t.id); save();
+  ui.tId = t.id; ui.round = pickRound(t); ui.tab = 'training'; ui.suiOpen = false;
+  ui.attOpen = t.present.length === 0;
+  scrollTo(0, 0);
+}
+function hasScores(t, pid) { return t.rounds.some(r => r.scores[pid] != null); }
+
+const actions = {
+  tab: el => {
+    ui.tab = el.dataset.tab; ui.suiOpen = false; ui.allT = false;
+    if (ui.tab !== 'training') pruneEmpty(null);
+    scrollTo(0, 0);
+  },
+  allT: () => { ui.allT = true; },
+  start: () => openTraining(todayISO()),
+  startDate: () => { const v = document.getElementById('newDate').value; if (v) openTraining(v); },
+  openT: el => { const t = T(el.dataset.id); if (t) openTraining(t.date); },
+  goToday: () => {
+    pruneEmpty(null); ui.tId = null; ui.suiOpen = false;
+    const t = db.trainings.find(x => x.date === todayISO());
+    ui.round = t ? pickRound(t) : 0; ui.attOpen = !t || !t.present.length;
+  },
+  attToggle: () => { ui.attOpen = !ui.attOpen; },
+  att: el => {
+    const t = currentTraining(), pid = el.dataset.p, i = t.present.indexOf(pid);
+    if (i >= 0) {
+      if (hasScores(t, pid) && !confirm(`${P(pid).name} heeft al scores. Afwezig melden en scores wissen?`)) return;
+      t.present.splice(i, 1); t.rounds.forEach(r => delete r.scores[pid]);
+    } else t.present.push(pid);
+    save();
+  },
+  attAll: () => { const t = currentTraining(); db.players.filter(p => p.active && !t.present.includes(p.id)).forEach(p => t.present.push(p.id)); save(); },
+  attNone: () => {
+    const t = currentTraining();
+    if (t.present.some(pid => hasScores(t, pid)) && !confirm('Iedereen afwezig melden en alle scores van deze training wissen?')) return;
+    t.present = []; t.rounds.forEach(r => r.scores = {}); save();
+  },
+  round: el => { ui.round = +el.dataset.i; },
+  addRound: () => { const t = currentTraining(); t.rounds.push({ att: SHOTS, scores: {} }); ui.round = t.rounds.length - 1; ui.attOpen = false; save(); },
+  score: el => {
+    const r = currentTraining().rounds[ui.round], pid = el.dataset.p, v = +el.dataset.v;
+    if (r.scores[pid] === v) delete r.scores[pid]; else r.scores[pid] = v;
+    save();
+  },
+  step: el => {
+    const r = currentTraining().rounds[ui.round], pid = el.dataset.p;
+    const cur = r.scores[pid] ?? (+el.dataset.d > 0 ? -1 : 0);
+    r.scores[pid] = Math.max(0, Math.min(r.att, cur + +el.dataset.d)); save();
+  },
+  delRound: () => {
+    const t = currentTraining();
+    if (!confirm('Deze ronde en de scores erin verwijderen?')) return;
+    t.rounds.splice(ui.round, 1); ui.round = Math.max(0, ui.round - 1); save();
+  },
+  delTraining: () => {
+    const t = currentTraining();
+    if (!confirm(`Training van ${dShort(t.date)} verwijderen?`)) return;
+    db.trainings = db.trainings.filter(x => x !== t); ui.tId = null; save(); toast('Training verwijderd');
+  },
+  suiOpen: () => { ui.suiOpen = true; focusSui = true; },
+  suiClose: () => { ui.suiOpen = false; },
+  suiDel: el => { const t = currentTraining(); t.suicides.splice(+el.dataset.i, 1); save(); },
+  period: el => { ui.period = el.dataset.k; },
+  player: el => { openPlayer(el.dataset.p); return false; },
+  dlgClose: () => { dlg.close(); return false; },
+  pActive: el => { const p = P(el.dataset.p); p.active = !p.active; save(); },
+  pRename: el => {
+    const p = P(el.dataset.p); const n = (prompt('Naam', p.name) || '').trim();
+    if (!n || n === p.name) return false;
+    if (db.players.some(x => x !== p && x.name.toLowerCase() === n.toLowerCase())) { toast('Die naam bestaat al'); return false; }
+    p.name = n; save();
+  },
+  pDel: el => { const p = P(el.dataset.p); if (confirm(`${p.name} verwijderen?`)) { db.players = db.players.filter(x => x !== p); save(); } },
+  export: () => { doExport(); return false; },
+  import: () => { document.getElementById('importFile').click(); return false; },
+};
+
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-a]');
+  if (!el) { if (e.target === dlg) dlg.close(); return; }
+  const fn = actions[el.dataset.a];
+  if (fn && fn(el) !== false) render();
+});
+document.addEventListener('submit', e => {
+  e.preventDefault();
+  const f = e.target.dataset.form;
+  if (f === 'sui') {
+    const inp = document.getElementById('suiIn'), raw = inp.value.trim();
+    const v = /^\d{1,3}([.,]\d{1,2})?$/.test(raw) ? parseFloat(raw.replace(',', '.')) : NaN;
+    if (!(v > 0 && v < 600)) { toast('Vul een tijd in seconden in, bijv. 24,5'); return; }
+    currentTraining().suicides.push(v); save();
+    focusSui = true;   // veld open laten voor de volgende tijd
+    render(); toast(`${fmtT(v)} s toegevoegd`);
+  } else if (f === 'addPlayer') {
+    const n = document.getElementById('newPlayer').value.trim();
+    if (!n) return;
+    if (db.players.some(p => p.name.toLowerCase() === n.toLowerCase())) { toast('Die naam bestaat al'); return; }
+    db.players.push({ id: uid(), name: n, active: true }); save(); render();
+  }
+});
+document.addEventListener('change', e => {
+  if (e.target.id === 'tDate') {
+    const t = currentTraining(), v = e.target.value;
+    if (!v) { render(); return; }
+    if (db.trainings.some(x => x !== t && x.date === v)) { toast('Op die datum is al een training'); render(); return; }
+    t.date = v; save(); render();
+  } else if (e.target.id === 'importFile') {
+    const file = e.target.files[0]; e.target.value = '';
+    if (!file) return;
+    file.text().then(txt => {
+      const d = JSON.parse(txt);
+      if (!validDb(d)) throw new Error('invalid');
+      if (!confirm(`Backup met ${d.trainings.length} trainingen en ${d.players.length} spelers importeren? De huidige data wordt vervangen.`)) return;
+      db = normalize(d); ui.tId = null; ui.round = 0; save(); render(); toast('Backup geïmporteerd');
+    }).catch(() => toast('Dit is geen geldig backupbestand'));
+  }
+});
+
+async function doExport() {
+  const name = `freethrows-backup-${todayISO()}.json`;
+  const file = new File([JSON.stringify(db)], name, { type: 'application/json' });
+  const mark = () => { db.lastBackup = todayISO(); save(); render(); };
+  if (matchMedia('(pointer: coarse)').matches && navigator.canShare && navigator.canShare({ files: [file] })) {
+    try { await navigator.share({ files: [file], title: name }); mark(); return; }
+    catch (e) { if (e.name === 'AbortError') return; }
+  }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(file); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  mark();
+}
+
+render();
+if (loadWarning) toast(loadWarning, 8000);
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>
