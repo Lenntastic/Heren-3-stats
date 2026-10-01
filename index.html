@@ -126,7 +126,7 @@ details.opts[open] summary::after{transform:rotate(45deg)}
 .field .input{flex:0 1 170px}
 
 /* stats */
-.segctl{display:grid;grid-template-columns:repeat(3,1fr);background:var(--surface-2);border-radius:12px;padding:3px;margin-bottom:12px}
+.segctl{display:grid;grid-template-columns:repeat(4,1fr);background:var(--surface-2);border-radius:12px;padding:3px;margin-bottom:12px}
 .segctl button{height:36px;border-radius:9px;font-size:14px;font-weight:600;color:var(--muted)}
 .segctl button.on{background:var(--surface);color:var(--text);box-shadow:0 1px 2px rgba(0,0,0,.08)}
 .kpis{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:8px;margin-bottom:12px}
@@ -351,6 +351,7 @@ function roundTotals(t, r) {
 }
 function periodStart(p) {
   const d = new Date();
+  if (p === 'week') { d.setDate(d.getDate() - 7); return iso(d); }
   if (p === '30') { d.setDate(d.getDate() - 30); return iso(d); }
   if (p === 'season') return `${d.getMonth() >= 7 ? d.getFullYear() : d.getFullYear() - 1}-08-01`;
   return '0000-00-00';
@@ -384,7 +385,7 @@ const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
 /* ---------- UI-state (onthouden, want iOS herlaadt apps op de achtergrond) ---------- */
 const UI_KEY = 'ft-ui';
-const ui = { tab: 'training', tId: null, round: 0, attOpen: true, suiOpen: false, period: '30', allT: false };
+const ui = { tab: 'training', tId: null, round: 0, attOpen: true, suiOpen: false, period: '30', statView: 'ft', allT: false };
 try {
   const s = JSON.parse(localStorage.getItem(UI_KEY));
   // Alleen herstellen als de app kort geleden nog open was (bv. midden in een training)
@@ -401,7 +402,7 @@ function render() {
   $app.innerHTML = ui.tab === 'training' ? viewTraining() : ui.tab === 'stats' ? viewStats() : viewBeheer();
   document.querySelectorAll('.tabbar button').forEach(b => b.classList.toggle('on', b.dataset.tab === ui.tab));
   if (focusSui) { focusSui = false; const i = document.getElementById('suiIn'); if (i) i.focus(); }
-  try { localStorage.setItem(UI_KEY, JSON.stringify({ tab: ui.tab, tId: ui.tId, round: ui.round, attOpen: ui.attOpen, period: ui.period, at: Date.now() })); } catch (e) {}
+  try { localStorage.setItem(UI_KEY, JSON.stringify({ tab: ui.tab, tId: ui.tId, round: ui.round, attOpen: ui.attOpen, period: ui.period, statView: ui.statView, at: Date.now() })); } catch (e) {}
 }
 let toastTimer;
 function toast(msg, ms = 2200) {
@@ -564,17 +565,23 @@ function viewStats() {
   const team = series.reduce((a, s) => ({ made: a.made + s.made, att: a.att + s.att, n: a.n + s.n }), { made: 0, att: 0, n: 0 });
   const rows = Object.entries(per).map(([pid, x]) => ({ p: P(pid), ...x })).filter(r => r.p)
     .sort((a, b) => b.made / b.att - a.made / a.att || b.att - a.att);
-  const periods = [['30', '30 dagen'], ['season', 'Seizoen'], ['all', 'Alles']];
+  const periods = [['week', 'Week'], ['30', 'Maand'], ['season', 'Seizoen'], ['all', 'Alles']];
   const seg = `<div class="segctl">${periods.map(([k, l]) => `<button class="${ui.period === k ? 'on' : ''}" data-a="period" data-k="${k}">${l}</button>`).join('')}</div>`;
-  const head = `<header class="page-h"><div><h1>Stats</h1><p class="sub">Free throws · ${SHOTS} per ronde</p></div></header>`;
-  if (!series.length) return head + seg + `<section class="card"><p class="empty">Geen trainingen in deze periode.</p></section>` + recordsCard();
+  const nHeld = ts.filter(t => t.present.length).length;
+  const head = `<header class="page-h"><div><h1>Stats</h1><p class="sub">${ui.statView === 'att' ? 'Aanwezigheid per speler en training' : `Free throws · ${SHOTS} per ronde`}</p></div></header>`;
+  if (!nHeld) return head + seg + `<section class="card"><p class="empty">Geen trainingen in deze periode.</p></section>` + recordsCard();
 
   const kpis = `<div class="kpis two">
     <div class="kpi"><div class="v">${pct(team.made, team.att)}</div><div class="l">Team · ${team.made}/${team.att}</div></div>
-    <div class="kpi"><div class="v">${series.length}</div><div class="l">Trainingen</div></div>
+    <div class="kpi"><div class="v">${nHeld}</div><div class="l">${nHeld === 1 ? 'Training' : 'Trainingen'}</div></div>
   </div>`;
 
-  const rank = `<section class="card"><h2>Ranglijst</h2>${rows.map((r, i) => `
+  const views = [['ft', 'Free throws'], ['att', 'Aanwezigheid']];
+  const vtabs = `<div class="rtabs">${views.map(([k, l]) => `<button class="rtab ${ui.statView === k ? 'on' : ''}" data-a="statView" data-k="${k}">${l}</button>`).join('')}</div>`;
+  if (ui.statView === 'att') return head + seg + kpis + viewAttendance(ts, vtabs);
+  if (!series.length) return head + seg + kpis + `<section class="card">${vtabs}<p class="empty">Nog geen scores in deze periode.</p></section>` + recordsCard();
+
+  const rank = `<section class="card">${vtabs}${rows.map((r, i) => `
     <button class="rank" data-a="player" data-p="${r.p.id}">
       <span class="pos">${i + 1}</span><span class="nm">${esc(r.p.name)}</span>
       <span class="fr">${r.made}/${r.att} · ${r.n}×</span><span class="pc">${pct(r.made, r.att)}</span>
@@ -601,6 +608,30 @@ function viewStats() {
   }
   return head + seg + kpis + rank + chart + recordsCard() + sui;
 }
+// Aanwezigheid in de gekozen periode: per speler en per training
+function viewAttendance(ts, vtabs) {
+  const held = ts.filter(t => t.present.length);
+  const cnt = {};
+  held.forEach(t => t.present.forEach(pid => { cnt[pid] = (cnt[pid] || 0) + 1; }));
+  const rows = db.players.filter(p => cnt[p.id] || p.active)
+    .map(p => ({ p, n: cnt[p.id] || 0 }))
+    .sort((a, b) => b.n - a.n || byName(a.p, b.p));
+  // gedeelde plaatsen bij gelijk aantal (1, 2, 2, 2, 5 …)
+  const pos = rows.map(r => rows.findIndex(x => x.n === r.n) + 1);
+  const players = `<section class="card">${vtabs}${rows.map((r, i) => `
+    <button class="rank" data-a="player" data-p="${r.p.id}">
+      <span class="pos">${i && pos[i] === pos[i - 1] ? '' : pos[i]}</span><span class="nm">${esc(r.p.name)}</span>
+      <span class="fr">${r.n}/${held.length}</span><span class="pc">${pct(r.n, held.length).replace(',0%', '%')}</span>
+      <span class="bar"><i style="width:${pctN(r.n, held.length).toFixed(1)}%"></i></span>
+    </button>`).join('')}</section>`;
+  const recent = [...held].reverse();
+  const shown = ui.allT ? recent : recent.slice(0, 10);
+  const perT = `<section class="card"><h2>Per training</h2>${shown.map(t => `
+    <button class="lrow" data-a="openT" data-id="${t.id}"><span><span class="t">${dShort(t.date)} <span class="muted" style="font-weight:400">· ${plural(t.present.length, 'speler', 'spelers')}</span></span><br>
+      <span class="s">${t.present.map(P).filter(Boolean).sort(byName).map(p => esc(p.name)).join(', ')}</span></span><span class="arrow"></span></button>`).join('')}
+    ${recent.length > shown.length ? `<button class="link" data-a="allT">Toon alle ${recent.length} trainingen</button>` : ''}</section>`;
+  return players + perT;
+}
 function recordsCard() {
   const { bestR, bestT } = records();
   if (!bestR && !bestT) return '';
@@ -609,19 +640,23 @@ function recordsCard() {
 }
 function openPlayer(pid) {
   const p = P(pid); if (!p) return;
-  const ts = periodTrainings(ui.period).filter(t => tTotals(t)[pid]);
-  const hist = ts.map(t => ({ t, ...tTotals(t)[pid] })).reverse();
+  const held = periodTrainings(ui.period).filter(t => t.present.length);
+  const hist = held.map(t => ({ t, here: t.present.includes(pid), ...(tTotals(t)[pid] || { made: 0, att: 0 }) })).reverse();
   const sum = hist.reduce((a, h) => ({ made: a.made + h.made, att: a.att + h.att }), { made: 0, att: 0 });
+  const here = hist.filter(h => h.here).length;
   const all = aggregate(sortedTrainings()).per[pid] || { made: 0, att: 0, n: 0 };
-  const label = { '30': 'Laatste 30 dagen', season: 'Dit seizoen', all: 'Alles' }[ui.period];
+  const label = { week: 'Afgelopen week', '30': 'Afgelopen maand', season: 'Dit seizoen', all: 'Alles' }[ui.period];
+  const row = h => !h.here
+    ? `<span class="muted">${dShort(h.t.date)}</span><span class="muted small" style="grid-column:2/5">afwezig</span>`
+    : `<span>${dShort(h.t.date)}</span><span class="bar"><i style="width:${pctN(h.made, h.att).toFixed(1)}%"></i></span><span class="r muted">${h.att ? `${h.made}/${h.att}` : ''}</span><span class="r">${h.att ? pct(h.made, h.att) : '<span class="muted small">aanwezig</span>'}</span>`;
   dlg.innerHTML = `<div class="dlg">
     <div class="dlg-h"><h2>${esc(p.name)}</h2><button class="close" data-a="dlgClose" aria-label="sluiten">×</button></div>
     <div class="kpis">
       <div class="kpi"><div class="v">${pct(sum.made, sum.att)}</div><div class="l">${label}</div></div>
       <div class="kpi"><div class="v">${pct(all.made, all.att)}</div><div class="l">Alles · ${all.made}/${all.att}</div></div>
-      <div class="kpi"><div class="v">${hist.length}</div><div class="l">Trainingen</div></div>
+      <div class="kpi"><div class="v">${here}/${held.length}</div><div class="l">Aanwezig</div></div>
     </div>
-    <div class="hist">${hist.map(h => `<span>${dShort(h.t.date)}</span><span class="bar"><i style="width:${pctN(h.made, h.att).toFixed(1)}%"></i></span><span class="r muted">${h.made}/${h.att}</span><span class="r">${pct(h.made, h.att)}</span>`).join('') || '<p class="empty">Geen data in deze periode.</p>'}</div>
+    <div class="hist">${hist.map(row).join('') || '<p class="empty">Geen trainingen in deze periode.</p>'}</div>
   </div>`;
   dlg.showModal();
 }
@@ -735,6 +770,7 @@ const actions = {
   suiClose: () => { ui.suiOpen = false; },
   suiDel: el => { const t = currentTraining(); t.suicides.splice(+el.dataset.i, 1); save(); },
   period: el => { ui.period = el.dataset.k; },
+  statView: el => { ui.statView = el.dataset.k; },
   player: el => { openPlayer(el.dataset.p); return false; },
   dlgClose: () => { dlg.close(); return false; },
   pActive: el => { const p = P(el.dataset.p); p.active = !p.active; save(); },
